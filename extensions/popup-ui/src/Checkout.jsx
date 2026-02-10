@@ -43,6 +43,11 @@ function Extension() {
     });
   }
 
+  // Get settings with fallback values (use the original hardcoded IDs as defaults)
+  const freightServiceFirst = shopify.settings.value.freight_services_first;
+  const freightServiceSecond = shopify.settings.value.freight_services_second;
+  const freightServiceThird = shopify.settings.value.freight_services_third;
+
   return (
     <>
       {/* Button in checkout that opens the modal */}
@@ -76,13 +81,12 @@ function Extension() {
             multiple
             onChange={(e) => {
               // e.currentTarget.values is an array of strings
-              console.log('Selected colors:', e.currentTarget.values);
               setMerchandiseId(e.currentTarget.values);
             }}
           >
-            <s-choice value="gid://shopify/ProductVariant/49901166559478">Residential - $80</s-choice>
-            <s-choice value="gid://shopify/ProductVariant/49901166428406">Lift Gate - $45</s-choice>
-            <s-choice value="gid://shopify/ProductVariant/9267498221814">Delivery Appointment - $15</s-choice>
+            <s-choice value={`gid://shopify/ProductVariant/${freightServiceFirst}`}>Residential - $80</s-choice>
+            <s-choice value={`gid://shopify/ProductVariant/${freightServiceSecond}`}>Lift Gate - $45</s-choice>
+            <s-choice value={`gid://shopify/ProductVariant/${freightServiceThird}`}>Delivery Appointment - $15</s-choice>
           </s-choice-list>
 
           {/* Special instructions */}
