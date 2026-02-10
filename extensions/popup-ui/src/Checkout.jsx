@@ -1,6 +1,6 @@
 import '@shopify/ui-extensions/preact';
 import {render} from 'preact';
-import {useState, useRef} from 'preact/hooks';
+import {useState, useRef, useEffect} from 'preact/hooks';
 
 export default async function init() {
   render(<Extension />, document.body);
@@ -10,7 +10,69 @@ function Extension() {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const [merchandiseId, setMerchandiseId] = useState([]);
+  const [totalWeight, setTotalWeight] = useState(0);
   const modalRef = useRef(null);
+
+  // Subscribe to cart changes to get total weight
+  useEffect(() => {
+    const unsubscribe = shopify.lines.subscribe(async (lines) => {
+      // Fetch weight data for all variants using Storefront API
+      const variantIds = lines.map(line => line.merchandise.id);
+      
+      if (variantIds.length === 0) {
+        setTotalWeight(0);
+        return;
+      }
+
+      try {
+        // Query Storefront API to get weight for each variant
+        const query = `
+          query getVariantWeights($ids: [ID!]!) {
+            nodes(ids: $ids) {
+              ... on ProductVariant {
+                id
+                weight
+                weightUnit
+              }
+            }
+          }
+        `;
+
+        const {data} = await shopify.query(query, {
+          variables: {ids: variantIds},
+        });
+
+        // Calculate total weight
+        let totalWeightInGrams = 0;
+        lines.forEach((line, index) => {
+          const variantData = data?.nodes?.[index];
+          if (variantData && variantData.weight) {
+            let weightInGrams = variantData.weight;
+            
+            // Convert to grams based on weight unit
+            if (variantData.weightUnit === 'KILOGRAMS') {
+              weightInGrams *= 1000;
+            } else if (variantData.weightUnit === 'POUNDS') {
+              weightInGrams *= 453.592;
+            } else if (variantData.weightUnit === 'OUNCES') {
+              weightInGrams *= 28.3495;
+            }
+            
+            totalWeightInGrams += weightInGrams * line.quantity;
+          }
+        });
+
+        // Convert grams to pounds
+        const weightInPounds = totalWeightInGrams / 453.592;
+        setTotalWeight(weightInPounds);
+      } catch (error) {
+        console.error('Error fetching variant weights:', error);
+        setTotalWeight(0);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
 
   async function handleSubmit() {
     merchandiseId.forEach(async (id) => {
@@ -47,6 +109,11 @@ function Extension() {
   const freightServiceFirst = shopify.settings.value.freight_services_first;
   const freightServiceSecond = shopify.settings.value.freight_services_second;
   const freightServiceThird = shopify.settings.value.freight_services_third;
+
+  // Only show freight shipping option if weight is above 100lb
+  if (totalWeight <= 100) {
+    return null;
+  }
 
   return (
     <>
