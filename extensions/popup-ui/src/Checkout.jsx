@@ -118,7 +118,7 @@ function Extension() {
   return (
     <>
       {/* Button in checkout that opens the modal */}
-      <s-button command="--show" commandFor="freight-modal" variant="primary">
+      <s-button command="--show" commandFor="freight-modal" variant="primary" gap="tight">
         Freight shipping
       </s-button>
 
@@ -142,9 +142,15 @@ function Extension() {
           </s-text>
 
           {/* Services multi-select */}
+          <s-heading>
+            please select services required (all that apply).
+          </s-heading>
+          <s-text>
+            Note: Residential locations need a lift gate unless equipped. Incorrect selections may lead to delays or additional fees.
+          </s-text>
+          
           <s-choice-list
             name="freightServices"
-            label="Please select services required (all that apply)."
             multiple
             onChange={(e) => {
               // e.currentTarget.values is an array of strings
@@ -157,9 +163,10 @@ function Extension() {
           </s-choice-list>
 
           {/* Special instructions */}
+          <s-text>Special instructions</s-text>
           <s-text-area
             name="specialInstructions"
-            label="Special instructions"
+            label="Leave special instructions like business hours, business name etc to ensure a smooth delivery."
           />
 
           {/* Simple error message (optional) */}
