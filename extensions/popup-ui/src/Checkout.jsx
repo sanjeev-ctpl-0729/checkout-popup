@@ -122,7 +122,7 @@ function Extension() {
       </s-button>
 
       {/* Modal content */}
-      <s-modal id="freight-modal" heading="Freight shipping" ref={modalRef}>
+      <s-modal id="freight-modal" heading="Freight shipping" ref={modalRef} size='large'>
         <s-stack gap="base">
           <s-text>
             Due to your order&apos;s size, it will be palletized and shipped
