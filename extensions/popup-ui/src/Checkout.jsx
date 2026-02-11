@@ -9,9 +9,16 @@ export default async function init() {
 function Extension() {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
-  const [merchandiseId, setMerchandiseId] = useState([]);
   const [totalWeight, setTotalWeight] = useState(0);
   const modalRef = useRef(null);
+  
+  // Get settings with fallback values
+  const freightServiceFirst = shopify.settings.value.freight_services_first;
+  const freightServiceSecond = shopify.settings.value.freight_services_second;
+  const freightServiceThird = shopify.settings.value.freight_services_third;
+  
+  // Initialize with first option selected by default
+  const [merchandiseId, setMerchandiseId] = useState(`gid://shopify/ProductVariant/${freightServiceFirst}`);
 
   // Subscribe to cart changes to get total weight
   useEffect(() => {
@@ -75,40 +82,32 @@ function Extension() {
   }, []);
 
   async function handleSubmit() {
-    merchandiseId.forEach(async (id) => {
-      try {
-        setError('');
-        setAdding(true);
+    try {
+      setError('');
+      setAdding(true);
 
-      // Variant to add – converted to a ProductVariant GID
-      // const merchandiseId = 'gid://shopify/ProductVariant/49901166559478';
+      // Add the selected freight service to cart
+      const result = await shopify.applyCartLinesChange({
+        type: 'addCartLine',
+        merchandiseId: merchandiseId,
+        quantity: 1,
+      });
 
-        const result = await shopify.applyCartLinesChange({
-          type: 'addCartLine',
-          merchandiseId: id,
-          quantity: 1,
-        });
-  
-        if (result.type === 'error') {
-          // Debug-style message; don’t show raw to customers in production
-          setError(result.message ?? 'Unable to add freight item.');
-        } else {
-          // Close the modal on success using the commands API:
-          // trigger the close button that has commandFor="freight-modal"
-          modalRef.current.hideOverlay();
-        }
-      } catch (e) {
-        setError('Something went wrong while adding the freight item.');
-      } finally {
-        setAdding(false);
+      if (result.type === 'error') {
+        // Debug-style message; don't show raw to customers in production
+        setError(result.message ?? 'Unable to add freight item.');
+      } else {
+        // Close the modal on success using the commands API:
+        // trigger the close button that has commandFor="freight-modal"
+        modalRef.current.hideOverlay();
       }
-    });
+    } catch (e) {
+      setError('Something went wrong while adding the freight item.');
+    } finally {
+      setAdding(false);
+    }
   }
 
-  // Get settings with fallback values (use the original hardcoded IDs as defaults)
-  const freightServiceFirst = shopify.settings.value.freight_services_first;
-  const freightServiceSecond = shopify.settings.value.freight_services_second;
-  const freightServiceThird = shopify.settings.value.freight_services_third;
 
   // Only show freight shipping option if weight is above 100lb
   if (totalWeight <= 100) {
@@ -118,7 +117,7 @@ function Extension() {
   return (
     <>
       {/* Button in checkout that opens the modal */}
-      <s-button command="--show" commandFor="freight-modal" variant="primary" gap="tight">
+      <s-button command="--show" commandFor="freight-modal" variant="primary">
         Freight shipping
       </s-button>
 
@@ -141,23 +140,25 @@ function Extension() {
             .
           </s-text>
 
-          {/* Services multi-select */}
+          {/* Services single-select */}
           <s-heading>
             please select services required (all that apply).
           </s-heading>
           <s-text>
             Note: Residential locations need a lift gate unless equipped. Incorrect selections may lead to delays or additional fees.
           </s-text>
-          
+
           <s-choice-list
             name="freightServices"
-            multiple
             onChange={(e) => {
-              // e.currentTarget.values is an array of strings
-              setMerchandiseId(e.currentTarget.values);
+              // e.currentTarget.values is an array, get first element for single selection
+              const selectedValue = e.currentTarget.values[0];
+              if (selectedValue) {
+                setMerchandiseId(selectedValue);
+              }
             }}
           >
-            <s-choice value={`gid://shopify/ProductVariant/${freightServiceFirst}`}>Residential - $80</s-choice>
+            <s-choice value={`gid://shopify/ProductVariant/${freightServiceFirst}`} selected>Residential - $80</s-choice>
             <s-choice value={`gid://shopify/ProductVariant/${freightServiceSecond}`}>Lift Gate - $45</s-choice>
             <s-choice value={`gid://shopify/ProductVariant/${freightServiceThird}`}>Delivery Appointment - $15</s-choice>
           </s-choice-list>
