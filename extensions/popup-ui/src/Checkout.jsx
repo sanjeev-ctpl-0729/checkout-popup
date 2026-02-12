@@ -95,6 +95,32 @@ function Extension() {
         return;
       }
 
+      // Get current cart lines
+      const currentLines = shopify.lines.current;
+      
+      // Find all freight service variant IDs
+      const freightVariantIds = [
+        `gid://shopify/ProductVariant/${freightServiceFirst}`,
+        `gid://shopify/ProductVariant/${freightServiceSecond}`,
+        `gid://shopify/ProductVariant/${freightServiceThird}`
+      ];
+
+      // Find existing freight service items in cart
+      const existingFreightLines = currentLines.filter(line => 
+        freightVariantIds.includes(line.merchandise.id)
+      );
+
+      // Remove existing freight service items if any
+      if (existingFreightLines.length > 0) {
+        for (const line of existingFreightLines) {
+          await shopify.applyCartLinesChange({
+            type: 'removeCartLine',
+            id: line.id,
+            quantity: line.quantity,
+          });
+        }
+      }
+
       // Add the selected freight service to cart
       const result = await shopify.applyCartLinesChange({
         type: 'addCartLine',
