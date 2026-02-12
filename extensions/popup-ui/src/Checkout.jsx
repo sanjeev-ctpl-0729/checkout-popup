@@ -17,8 +17,10 @@ function Extension() {
   const freightServiceSecond = shopify.settings.value.freight_services_second;
   const freightServiceThird = shopify.settings.value.freight_services_third;
   
-  // Initialize with first option selected by default
-  const [merchandiseId, setMerchandiseId] = useState(`gid://shopify/ProductVariant/${freightServiceFirst}`);
+  // Initialize with first option selected by default, only if valid
+  const [merchandiseId, setMerchandiseId] = useState(
+    freightServiceFirst ? `gid://shopify/ProductVariant/${freightServiceFirst}` : null
+  );
 
   // Subscribe to cart changes to get total weight
   useEffect(() => {
@@ -86,6 +88,13 @@ function Extension() {
       setError('');
       setAdding(true);
 
+      // Validate merchandiseId before attempting to add
+      if (!merchandiseId) {
+        setError('Please select a freight service option.');
+        setAdding(false);
+        return;
+      }
+
       // Add the selected freight service to cart
       const result = await shopify.applyCartLinesChange({
         type: 'addCartLine',
@@ -111,6 +120,12 @@ function Extension() {
 
   // Only show freight shipping option if weight is above 100lb
   if (totalWeight <= 100) {
+    return null;
+  }
+
+  // Don't render if freight services are not configured
+  if (!freightServiceFirst || !freightServiceSecond || !freightServiceThird) {
+    console.error('Freight services not configured in extension settings');
     return null;
   }
 
