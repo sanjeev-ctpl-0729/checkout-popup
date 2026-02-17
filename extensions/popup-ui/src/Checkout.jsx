@@ -13,6 +13,11 @@ function Extension() {
   const modalRef = useRef(null);
   
   // Get settings with fallback values
+  const freightServiceFirstTitle = shopify.settings.value.freight_services_first_title;
+  const freightServiceSecondTitle = shopify.settings.value.freight_services_second_title;
+  const freightServiceThirdTitle = shopify.settings.value.freight_services_third_title;
+  
+  // Get settings with fallback values
   const freightServiceFirst = shopify.settings.value.freight_services_first;
   const freightServiceSecond = shopify.settings.value.freight_services_second;
   const freightServiceThird = shopify.settings.value.freight_services_third;
@@ -145,7 +150,8 @@ function Extension() {
 
 
   // Only show freight shipping option if weight is above 100lb
-  if (totalWeight <= 100) {
+  const freightWeight = shopify.settings.value.freight_services_weight_limit;
+  if (totalWeight <= freightWeight) {
     return null;
   }
 
@@ -199,9 +205,9 @@ function Extension() {
               }
             }}
           >
-            <s-choice value={`gid://shopify/ProductVariant/${freightServiceFirst}`} selected>Residential - $80</s-choice>
-            <s-choice value={`gid://shopify/ProductVariant/${freightServiceSecond}`}>Lift Gate - $45</s-choice>
-            <s-choice value={`gid://shopify/ProductVariant/${freightServiceThird}`}>Delivery Appointment - $15</s-choice>
+            <s-choice value={`gid://shopify/ProductVariant/${freightServiceFirst}`} selected>{freightServiceFirstTitle}</s-choice>
+            <s-choice value={`gid://shopify/ProductVariant/${freightServiceSecond}`}>{freightServiceSecondTitle}</s-choice>
+            <s-choice value={`gid://shopify/ProductVariant/${freightServiceThird}`}>{freightServiceThirdTitle}</s-choice>
           </s-choice-list>
 
           {/* Special instructions */}
