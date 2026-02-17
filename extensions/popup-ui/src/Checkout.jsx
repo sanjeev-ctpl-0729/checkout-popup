@@ -11,7 +11,7 @@ function Extension() {
   const [error, setError] = useState('');
   const [totalWeight, setTotalWeight] = useState(0);
   const modalRef = useRef(null);
-  
+  const [attributes, setAttributes] = useState('');
   // Get settings with fallback values
   const freightServiceFirstTitle = shopify.settings.value.freight_services_first_title;
   const freightServiceSecondTitle = shopify.settings.value.freight_services_second_title;
@@ -131,7 +131,15 @@ function Extension() {
         type: 'addCartLine',
         merchandiseId: merchandiseId,
         quantity: 1,
+        attributes: [
+          {
+            key: 'special_instructions',
+            value: `${attributes}`
+          }
+        ]
+
       });
+
 
       if (result.type === 'error') {
         // Debug-style message; don't show raw to customers in production
@@ -215,6 +223,9 @@ function Extension() {
           <s-text-area
             name="specialInstructions"
             label="Leave special instructions like business hours, business name etc to ensure a smooth delivery."
+            onChange={(e) => {
+              setAttributes(e.currentTarget.value);
+            }}
           />
 
           {/* Simple error message (optional) */}
