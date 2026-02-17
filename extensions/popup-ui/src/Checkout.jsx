@@ -1,6 +1,7 @@
 import '@shopify/ui-extensions/preact';
 import {render} from 'preact';
 import {useState, useRef, useEffect} from 'preact/hooks';
+import {useBuyerJourneyIntercept} from '@shopify/ui-extensions/checkout/preact';
 
 export default async function init() {
   render(<Extension />, document.body);
@@ -88,6 +89,42 @@ function Extension() {
     return unsubscribe;
   }, []);
 
+  // Checkout validation - block if no freight item in cart when weight > limit
+  useBuyerJourneyIntercept(({canBlockProgress}) => {
+    const currentLines = shopify.lines.current;
+    const freightWeight = shopify.settings.value.freight_services_weight_limit || 100;
+    
+    // Check if weight exceeds limit
+    if (totalWeight <= freightWeight) {
+      return { behavior: 'allow' };
+    }
+
+    // Get freight variant IDs
+    const freightVariantIds = [
+      `gid://shopify/ProductVariant/${freightServiceFirst}`,
+      `gid://shopify/ProductVariant/${freightServiceSecond}`,
+      `gid://shopify/ProductVariant/${freightServiceThird}`
+    ].filter(id => id && !id.includes('undefined') && !id.includes('null'));
+
+    // Check if any freight item is in cart
+    const hasFreightItem = currentLines.some(line => 
+      freightVariantIds.includes(line.merchandise.id)
+    );
+
+    // Block if no freight item added
+    if (canBlockProgress && !hasFreightItem) {
+      return {
+        behavior: 'block',
+        reason: 'Freight service required',
+        errors: [{
+          message: 'Please add a freight service option before completing checkout.',
+        }],
+      };
+    }
+
+    return { behavior: 'allow' };
+  });
+
   async function handleSubmit() {
     try {
       setError('');
@@ -169,11 +206,40 @@ function Extension() {
     return null;
   }
 
+  // Check if freight item is already in cart
+  const currentLines = shopify.lines.current;
+  const freightVariantIds = [
+    `gid://shopify/ProductVariant/${freightServiceFirst}`,
+    `gid://shopify/ProductVariant/${freightServiceSecond}`,
+    `gid://shopify/ProductVariant/${freightServiceThird}`
+  ];
+  const hasFreightItem = currentLines.some(line => 
+    freightVariantIds.includes(line.merchandise.id)
+  );
+
   return (
     <>
+      {/* Warning banner when no freight item added */}
+      {!hasFreightItem && (
+        <s-banner>
+          <s-text>
+            ⚠️ Checkout Blocked: You must select a freight service before completing checkout.
+          </s-text>
+        </s-banner>
+      )}
+
+      {/* Success banner when freight item is added */}
+      {hasFreightItem && (
+        <s-banner>
+          <s-text>
+            ✅ Freight service added. You may now complete your order.
+          </s-text>
+        </s-banner>
+      )}
+
       {/* Button in checkout that opens the modal */}
       <s-button command="--show" commandFor="freight-modal" variant="primary">
-        Freight shipping
+        {hasFreightItem ? 'Modify Freight Shipping' : 'Add Freight Shipping (Required)'}
       </s-button>
 
       {/* Modal content */}
