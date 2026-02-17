@@ -46,19 +46,31 @@ api_access = true
 
 [extensions.settings]
 [[extensions.settings.fields]]
+key = "freight_services_first_title"
+type = "single_line_text_field"
+name = "Enter first freight variant title"
+
+[[extensions.settings.fields]]
 key = "freight_services_first"
 type = "single_line_text_field"
-name = "freight services first"
-description = "Enter freight product variant id"
+name = "Enter first freight variant id"
+
+[[extensions.settings.fields]]
+key = "freight_services_second_title"
+type = "single_line_text_field"
+name = "Enter second freight variant title"
 
 [[extensions.settings.fields]]
 key = "freight_services_second"
 type = "single_line_text_field"
-name = "freight services second"
-description = "Enter freight product variant id"
+name = "Enter second freight variant id"
+
+[[extensions.settings.fields]]
+key = "freight_services_third_title"
+type = "single_line_text_field"
+name = "Enter third freight variant title"
 
 [[extensions.settings.fields]]
 key = "freight_services_third"
 type = "single_line_text_field"
-name = "freight services third"
-description = "Enter freight product variant id"
+name = "Enter third freight variant id"
