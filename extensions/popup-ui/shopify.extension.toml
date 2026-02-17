@@ -74,3 +74,8 @@ name = "Enter third freight variant title"
 key = "freight_services_third"
 type = "single_line_text_field"
 name = "Enter third freight variant id"
+
+[[extensions.settings.fields]]
+key = "freight_services_weight_limit"
+type = "number_integer"
+name = "Enter weight limit (weight limit > 100)"
