@@ -23,10 +23,8 @@ function Extension() {
   const freightServiceSecond = shopify.settings.value.freight_services_second;
   const freightServiceThird = shopify.settings.value.freight_services_third;
   
-  // Initialize with first option selected by default, only if valid
-  const [merchandiseId, setMerchandiseId] = useState(
-    freightServiceFirst ? `gid://shopify/ProductVariant/${freightServiceFirst}` : null
-  );
+  // Initialize with empty array for multi-select
+  const [selectedMerchandiseIds, setSelectedMerchandiseIds] = useState([]);
 
   // Subscribe to cart changes to get total weight
   useEffect(() => {
@@ -130,9 +128,9 @@ function Extension() {
       setError('');
       setAdding(true);
 
-      // Validate merchandiseId before attempting to add
-      if (!merchandiseId) {
-        setError('Please select a freight service option.');
+      // Validate that at least one freight service is selected
+      if (!selectedMerchandiseIds || selectedMerchandiseIds.length === 0) {
+        setError('Please select at least one freight service option.');
         setAdding(false);
         return;
       }
@@ -163,31 +161,31 @@ function Extension() {
         }
       }
 
-      // Add the selected freight service to cart
-      const result = await shopify.applyCartLinesChange({
-        type: 'addCartLine',
-        merchandiseId: merchandiseId,
-        quantity: 1,
-        attributes: [
-          {
-            key: 'special_instructions',
-            value: `${attributes}`
-          }
-        ]
+      // Add all selected freight services to cart
+      for (const merchandiseId of selectedMerchandiseIds) {
+        const result = await shopify.applyCartLinesChange({
+          type: 'addCartLine',
+          merchandiseId: merchandiseId,
+          quantity: 1,
+          attributes: [
+            {
+              key: 'special_instructions',
+              value: `${attributes}`
+            }
+          ]
+        });
 
-      });
-
-
-      if (result.type === 'error') {
-        // Debug-style message; don't show raw to customers in production
-        setError(result.message ?? 'Unable to add freight item.');
-      } else {
-        // Close the modal on success using the commands API:
-        // trigger the close button that has commandFor="freight-modal"
-        modalRef.current.hideOverlay();
+        if (result.type === 'error') {
+          setError(result.message ?? 'Unable to add freight item.');
+          setAdding(false);
+          return;
+        }
       }
+
+      // Close the modal on success
+      modalRef.current.hideOverlay();
     } catch (e) {
-      setError('Something went wrong while adding the freight item.');
+      setError('Something went wrong while adding the freight items.');
     } finally {
       setAdding(false);
     }
@@ -271,15 +269,14 @@ function Extension() {
 
           <s-choice-list
             name="freightServices"
+            multiple
             onChange={(e) => {
-              // e.currentTarget.values is an array, get first element for single selection
-              const selectedValue = e.currentTarget.values[0];
-              if (selectedValue) {
-                setMerchandiseId(selectedValue);
-              }
+              // e.currentTarget.values is an array containing all selected values
+              const selectedValues = e.currentTarget.values || [];
+              setSelectedMerchandiseIds(selectedValues);
             }}
           >
-            <s-choice value={`gid://shopify/ProductVariant/${freightServiceFirst}`} selected>{freightServiceFirstTitle}</s-choice>
+            <s-choice value={`gid://shopify/ProductVariant/${freightServiceFirst}`}>{freightServiceFirstTitle}</s-choice>
             <s-choice value={`gid://shopify/ProductVariant/${freightServiceSecond}`}>{freightServiceSecondTitle}</s-choice>
             <s-choice value={`gid://shopify/ProductVariant/${freightServiceThird}`}>{freightServiceThirdTitle}</s-choice>
           </s-choice-list>
