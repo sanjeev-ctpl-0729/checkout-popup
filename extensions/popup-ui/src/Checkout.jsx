@@ -22,6 +22,15 @@ function Extension() {
   const freightServiceFirst = shopify.settings.value.freight_services_first;
   const freightServiceSecond = shopify.settings.value.freight_services_second;
   const freightServiceThird = shopify.settings.value.freight_services_third;
+
+  const freightWeight = shopify.settings.value.freight_services_weight_limit;
+
+  // Get freight variant IDs
+  const freightVariantIds = [
+    `gid://shopify/ProductVariant/${freightServiceFirst}`,
+    `gid://shopify/ProductVariant/${freightServiceSecond}`,
+    `gid://shopify/ProductVariant/${freightServiceThird}`
+  ];
   
   // Initialize with empty array for multi-select
   const [selectedMerchandiseIds, setSelectedMerchandiseIds] = useState([]);
@@ -87,41 +96,6 @@ function Extension() {
     return unsubscribe;
   }, []);
 
-  // Checkout validation - block if no freight item in cart when weight > limit
-  useBuyerJourneyIntercept(({canBlockProgress}) => {
-    const currentLines = shopify.lines.current;
-    const freightWeight = shopify.settings.value.freight_services_weight_limit || 100;
-    
-    // Check if weight exceeds limit
-    if (totalWeight <= freightWeight) {
-      return { behavior: 'allow' };
-    }
-
-    // Get freight variant IDs
-    const freightVariantIds = [
-      `gid://shopify/ProductVariant/${freightServiceFirst}`,
-      `gid://shopify/ProductVariant/${freightServiceSecond}`,
-      `gid://shopify/ProductVariant/${freightServiceThird}`
-    ].filter(id => id && !id.includes('undefined') && !id.includes('null'));
-
-    // Check if any freight item is in cart
-    const hasFreightItem = currentLines.some(line => 
-      freightVariantIds.includes(line.merchandise.id)
-    );
-
-    // Block if no freight item added
-    if (canBlockProgress && !hasFreightItem) {
-      return {
-        behavior: 'block',
-        reason: 'Freight service required',
-        errors: [{
-          message: 'Please add a freight service option before completing checkout.',
-        }],
-      };
-    }
-
-    return { behavior: 'allow' };
-  });
 
   async function handleSubmit() {
     try {
@@ -137,13 +111,6 @@ function Extension() {
 
       // Get current cart lines
       const currentLines = shopify.lines.current;
-      
-      // Find all freight service variant IDs
-      const freightVariantIds = [
-        `gid://shopify/ProductVariant/${freightServiceFirst}`,
-        `gid://shopify/ProductVariant/${freightServiceSecond}`,
-        `gid://shopify/ProductVariant/${freightServiceThird}`
-      ];
 
       // Find existing freight service items in cart
       const existingFreightLines = currentLines.filter(line => 
@@ -193,8 +160,7 @@ function Extension() {
 
 
   // Only show freight shipping option if weight is above 100lb
-  const freightWeight = shopify.settings.value.freight_services_weight_limit;
-  if (totalWeight <= freightWeight) {
+  if (totalWeight <= Number(freightWeight)) {
     return null;
   }
 
@@ -206,14 +172,37 @@ function Extension() {
 
   // Check if freight item is already in cart
   const currentLines = shopify.lines.current;
-  const freightVariantIds = [
-    `gid://shopify/ProductVariant/${freightServiceFirst}`,
-    `gid://shopify/ProductVariant/${freightServiceSecond}`,
-    `gid://shopify/ProductVariant/${freightServiceThird}`
-  ];
   const hasFreightItem = currentLines.some(line => 
     freightVariantIds.includes(line.merchandise.id)
   );
+
+  // Checkout validation - block if no freight item in cart when weight > limit
+  useBuyerJourneyIntercept(({canBlockProgress}) => {
+    const currentLines = shopify.lines.current;
+    
+    // Check if weight exceeds limit
+    if (totalWeight <= Number(freightWeight)) {
+      return { behavior: 'allow' };
+    }
+
+    // Check if any freight item is in cart
+    const hasFreightItem = currentLines.some(line => 
+      freightVariantIds.includes(line.merchandise.id)
+    );
+
+    // Block if no freight item added
+    if (canBlockProgress && !hasFreightItem) {
+      return {
+        behavior: 'block',
+        reason: 'Freight service required',
+        errors: [{
+          message: 'Please add a freight service option before completing checkout.',
+        }],
+      };
+    }
+
+    return { behavior: 'allow' };
+  });
 
   return (
     <>
