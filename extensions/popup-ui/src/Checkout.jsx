@@ -102,13 +102,9 @@ function Extension() {
       setError('');
       setAdding(true);
 
-      // Validate that at least one freight service is selected
-      if (!selectedMerchandiseIds || selectedMerchandiseIds.length === 0) {
-        setError('Please select at least one freight service option.');
-        setAdding(false);
-        return;
-      }
-
+      // Check if "None" option is selected
+      const hasNoneOption = selectedMerchandiseIds.includes('none');
+      
       // Get current cart lines
       const currentLines = shopify.lines.current;
 
@@ -128,8 +124,23 @@ function Extension() {
         }
       }
 
-      // Add all selected freight services to cart
-      for (const merchandiseId of selectedMerchandiseIds) {
+      // If "None" is selected, don't add any freight services
+      if (hasNoneOption) {
+        // Close the modal on success
+        modalRef.current.hideOverlay();
+        return;
+      }
+
+      // Validate that at least one freight service is selected (if not "None")
+      if (!selectedMerchandiseIds || selectedMerchandiseIds.length === 0) {
+        setError('Please select at least one freight service option.');
+        setAdding(false);
+        return;
+      }
+
+      // Add all selected freight services to cart (excluding "none")
+      const freightServicesToAdd = selectedMerchandiseIds.filter(id => id !== 'none');
+      for (const merchandiseId of freightServicesToAdd) {
         const result = await shopify.applyCartLinesChange({
           type: 'addCartLine',
           merchandiseId: merchandiseId,
@@ -176,6 +187,12 @@ function Extension() {
     freightVariantIds.includes(line.merchandise.id)
   );
 
+  // Check if user has made a freight selection (either 'none' or freight services)
+  const hasMadeFreightSelection = selectedMerchandiseIds.length > 0;
+
+  // Check if 'none' is selected
+  const hasSelectedNone = selectedMerchandiseIds.includes('none');
+
   // Checkout validation - block if no freight item in cart when weight > limit
   useBuyerJourneyIntercept(({canBlockProgress}) => {
     const currentLines = shopify.lines.current;
@@ -190,8 +207,11 @@ function Extension() {
       freightVariantIds.includes(line.merchandise.id)
     );
 
-    // Block if no freight item added
-    if (canBlockProgress && !hasFreightItem) {
+    // Check if user has made a selection (either 'none' or freight services)
+    const hasMadeSelection = selectedMerchandiseIds.length > 0;
+
+    // Block if no freight item added AND no selection made
+    if (canBlockProgress && !hasFreightItem && !hasMadeSelection) {
       return {
         behavior: 'block',
         reason: 'Freight service required',
@@ -206,20 +226,20 @@ function Extension() {
 
   return (
     <>
-      {/* Warning banner when no freight item added */}
-      {!hasFreightItem && (
+      {/* Warning banner when no freight selection made and no freight item in cart */}
+      {!hasFreightItem && !hasMadeFreightSelection && (
         <s-banner>
           <s-text>
-            ⚠️ Checkout Blocked: You must select a freight service before completing checkout.
+            ⚠️ Checkout Blocked: You must select a freight service option before completing checkout.
           </s-text>
         </s-banner>
       )}
 
-      {/* Success banner when freight item is added */}
-      {hasFreightItem && (
+      {/* Success banner when freight item is added or when 'none' is selected */}
+      {(hasFreightItem || hasSelectedNone) && (
         <s-banner>
           <s-text>
-            ✅ Freight service added. You may now complete your order.
+            ✅ {hasFreightItem ? 'Freight service added. You may now complete your order.' : 'Freight service declined. You may now complete your order.'}
           </s-text>
         </s-banner>
       )}
@@ -268,6 +288,7 @@ function Extension() {
             <s-choice value={`gid://shopify/ProductVariant/${freightServiceFirst}`}>{freightServiceFirstTitle}</s-choice>
             <s-choice value={`gid://shopify/ProductVariant/${freightServiceSecond}`}>{freightServiceSecondTitle}</s-choice>
             <s-choice value={`gid://shopify/ProductVariant/${freightServiceThird}`}>{freightServiceThirdTitle}</s-choice>
+            <s-choice value="none">None</s-choice>
           </s-choice-list>
 
           {/* Special instructions */}
