@@ -145,12 +145,7 @@ function Extension() {
           type: 'addCartLine',
           merchandiseId: merchandiseId,
           quantity: 1,
-          attributes: [
-            {
-              key: 'special_instructions',
-              value: `${attributes}`
-            }
-          ]
+          attributes: []
         });
 
         if (result.type === 'error') {
@@ -158,6 +153,14 @@ function Extension() {
           setAdding(false);
           return;
         }
+      }
+
+      // Add special instructions as cart note if provided
+      if (attributes && attributes.trim()) {
+        await shopify.applyNoteChange({
+          type: 'updateNote',
+          note: `Freight Special Instructions: ${attributes}`
+        });
       }
 
       // Close the modal on success
