@@ -1,6 +1,7 @@
 import '@shopify/ui-extensions/preact';
 import {render} from 'preact';
 import {useState, useRef, useEffect} from 'preact/hooks';
+import {useBuyerJourneyIntercept} from '@shopify/ui-extensions/checkout/preact';
 
 export default async function init() {
   render(<Extension />, document.body);
@@ -21,11 +22,18 @@ function Extension() {
   const freightServiceFirst = shopify.settings.value.freight_services_first;
   const freightServiceSecond = shopify.settings.value.freight_services_second;
   const freightServiceThird = shopify.settings.value.freight_services_third;
+
+  const freightWeight = shopify.settings.value.freight_services_weight_limit;
+
+  // Get freight variant IDs
+  const freightVariantIds = [
+    `gid://shopify/ProductVariant/${freightServiceFirst}`,
+    `gid://shopify/ProductVariant/${freightServiceSecond}`,
+    `gid://shopify/ProductVariant/${freightServiceThird}`
+  ];
   
-  // Initialize with first option selected by default, only if valid
-  const [merchandiseId, setMerchandiseId] = useState(
-    freightServiceFirst ? `gid://shopify/ProductVariant/${freightServiceFirst}` : null
-  );
+  // Initialize with empty array for multi-select
+  const [selectedMerchandiseIds, setSelectedMerchandiseIds] = useState([]);
 
   // Subscribe to cart changes to get total weight
   useEffect(() => {
@@ -88,27 +96,17 @@ function Extension() {
     return unsubscribe;
   }, []);
 
+
   async function handleSubmit() {
     try {
       setError('');
       setAdding(true);
 
-      // Validate merchandiseId before attempting to add
-      if (!merchandiseId) {
-        setError('Please select a freight service option.');
-        setAdding(false);
-        return;
-      }
-
+      // Check if "None" option is selected
+      const hasNoneOption = selectedMerchandiseIds.includes('none');
+      
       // Get current cart lines
       const currentLines = shopify.lines.current;
-      
-      // Find all freight service variant IDs
-      const freightVariantIds = [
-        `gid://shopify/ProductVariant/${freightServiceFirst}`,
-        `gid://shopify/ProductVariant/${freightServiceSecond}`,
-        `gid://shopify/ProductVariant/${freightServiceThird}`
-      ];
 
       // Find existing freight service items in cart
       const existingFreightLines = currentLines.filter(line => 
@@ -126,31 +124,49 @@ function Extension() {
         }
       }
 
-      // Add the selected freight service to cart
-      const result = await shopify.applyCartLinesChange({
-        type: 'addCartLine',
-        merchandiseId: merchandiseId,
-        quantity: 1,
-        attributes: [
-          {
-            key: 'special_instructions',
-            value: `${attributes}`
-          }
-        ]
-
-      });
-
-
-      if (result.type === 'error') {
-        // Debug-style message; don't show raw to customers in production
-        setError(result.message ?? 'Unable to add freight item.');
-      } else {
-        // Close the modal on success using the commands API:
-        // trigger the close button that has commandFor="freight-modal"
+      // If "None" is selected, don't add any freight services
+      if (hasNoneOption) {
+        // Close the modal on success
         modalRef.current.hideOverlay();
+        return;
       }
+
+      // Validate that at least one freight service is selected (if not "None")
+      if (!selectedMerchandiseIds || selectedMerchandiseIds.length === 0) {
+        setError('Please select at least one freight service option.');
+        setAdding(false);
+        return;
+      }
+
+      // Add all selected freight services to cart (excluding "none")
+      const freightServicesToAdd = selectedMerchandiseIds.filter(id => id !== 'none');
+      for (const merchandiseId of freightServicesToAdd) {
+        const result = await shopify.applyCartLinesChange({
+          type: 'addCartLine',
+          merchandiseId: merchandiseId,
+          quantity: 1,
+          attributes: []
+        });
+
+        if (result.type === 'error') {
+          setError(result.message ?? 'Unable to add freight item.');
+          setAdding(false);
+          return;
+        }
+      }
+
+      // Add special instructions as cart note if provided
+      if (attributes && attributes.trim()) {
+        await shopify.applyNoteChange({
+          type: 'updateNote',
+          note: `Freight Special Instructions: ${attributes}`
+        });
+      }
+
+      // Close the modal on success
+      modalRef.current.hideOverlay();
     } catch (e) {
-      setError('Something went wrong while adding the freight item.');
+      setError('Something went wrong while adding the freight items.');
     } finally {
       setAdding(false);
     }
@@ -158,8 +174,7 @@ function Extension() {
 
 
   // Only show freight shipping option if weight is above 100lb
-  const freightWeight = shopify.settings.value.freight_services_weight_limit;
-  if (totalWeight <= freightWeight) {
+  if (totalWeight <= Number(freightWeight)) {
     return null;
   }
 
@@ -169,11 +184,72 @@ function Extension() {
     return null;
   }
 
+  // Check if freight item is already in cart
+  const currentLines = shopify.lines.current;
+  const hasFreightItem = currentLines.some(line => 
+    freightVariantIds.includes(line.merchandise.id)
+  );
+
+  // Check if user has made a freight selection (either 'none' or freight services)
+  const hasMadeFreightSelection = selectedMerchandiseIds.length > 0;
+
+  // Check if 'none' is selected
+  const hasSelectedNone = selectedMerchandiseIds.includes('none');
+
+  // Checkout validation - block if no freight item in cart when weight > limit
+  useBuyerJourneyIntercept(({canBlockProgress}) => {
+    const currentLines = shopify.lines.current;
+    
+    // Check if weight exceeds limit
+    if (totalWeight <= Number(freightWeight)) {
+      return { behavior: 'allow' };
+    }
+
+    // Check if any freight item is in cart
+    const hasFreightItem = currentLines.some(line => 
+      freightVariantIds.includes(line.merchandise.id)
+    );
+
+    // Check if user has made a selection (either 'none' or freight services)
+    const hasMadeSelection = selectedMerchandiseIds.length > 0;
+
+    // Block if no freight item added AND no selection made
+    if (canBlockProgress && !hasFreightItem && !hasMadeSelection) {
+      return {
+        behavior: 'block',
+        reason: 'Freight service required',
+        errors: [{
+          message: 'Please add a freight service option before completing checkout.',
+        }],
+      };
+    }
+
+    return { behavior: 'allow' };
+  });
+
   return (
     <>
+      {/* Warning banner when no freight selection made and no freight item in cart */}
+      {!hasFreightItem && !hasMadeFreightSelection && (
+        <s-banner>
+          <s-text>
+            ⚠️ Checkout Blocked: You must select a freight service option before completing checkout.
+          </s-text>
+        </s-banner>
+      )}
+
+      {/* Success banner when freight item is added or when 'none' is selected */}
+      {(hasFreightItem || hasSelectedNone) && (
+        <s-banner>
+          <s-text>
+            ✅ {hasFreightItem ? 'Freight service added. You may now complete your order.' : 'Freight service declined. You may now complete your order.'}
+          </s-text>
+        </s-banner>
+      )}
+
       {/* Button in checkout that opens the modal */}
       <s-button command="--show" commandFor="freight-modal" variant="primary">
-        Freight shipping
+        {hasFreightItem ? 'Modify Freight Shipping' : 'Add Freight Shipping (Required)'}
       </s-button>
 
       {/* Modal content */}
@@ -205,17 +281,17 @@ function Extension() {
 
           <s-choice-list
             name="freightServices"
+            multiple
             onChange={(e) => {
-              // e.currentTarget.values is an array, get first element for single selection
-              const selectedValue = e.currentTarget.values[0];
-              if (selectedValue) {
-                setMerchandiseId(selectedValue);
-              }
+              // e.currentTarget.values is an array containing all selected values
+              const selectedValues = e.currentTarget.values || [];
+              setSelectedMerchandiseIds(selectedValues);
             }}
           >
-            <s-choice value={`gid://shopify/ProductVariant/${freightServiceFirst}`} selected>{freightServiceFirstTitle}</s-choice>
+            <s-choice value={`gid://shopify/ProductVariant/${freightServiceFirst}`}>{freightServiceFirstTitle}</s-choice>
             <s-choice value={`gid://shopify/ProductVariant/${freightServiceSecond}`}>{freightServiceSecondTitle}</s-choice>
             <s-choice value={`gid://shopify/ProductVariant/${freightServiceThird}`}>{freightServiceThirdTitle}</s-choice>
+            <s-choice value="none">None</s-choice>
           </s-choice-list>
 
           {/* Special instructions */}
