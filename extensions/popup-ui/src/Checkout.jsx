@@ -314,7 +314,7 @@ function Extension() {
             onClick={handleSubmit}
             disabled={adding}
           >
-            {adding ? 'Adding...' : 'Submit'}
+            {adding ? 'Adding...' : 'submit'}
           </s-button>
         </s-stack>
       </s-modal>
