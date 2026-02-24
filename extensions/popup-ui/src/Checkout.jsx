@@ -295,7 +295,7 @@ function Extension() {
           </s-choice-list>
 
           {/* Special instructions */}
-          <s-text>special instructions</s-text>
+          <s-heading>special instructions</s-heading>
           <s-text-area
             name="specialInstructions"
             label="Leave special instructions like business hours, business name etc to ensure a smooth delivery."
