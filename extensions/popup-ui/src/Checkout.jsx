@@ -235,6 +235,11 @@ function Extension() {
           <s-text>
             ⚠️ Checkout Blocked: You must select a freight service option before completing checkout.
           </s-text>
+          <s-stack direction="inline" paddingBlockStart="small-400">
+            <s-link href="" target="_blank" command="--show" commandFor="freight-modal">
+              {hasFreightItem ? 'Modify Freight Shipping' : 'Add Freight Shipping (Required)'}
+            </s-link>
+          </s-stack>
         </s-banner>
       )}
 
@@ -244,13 +249,13 @@ function Extension() {
           <s-text>
             ✅ {hasFreightItem ? 'Freight service added. You may now complete your order.' : 'Freight service declined. You may now complete your order.'}
           </s-text>
+          <s-stack direction="inline" paddingBlock="large">
+            <s-link href="" target="_blank" command="--show" commandFor="freight-modal">
+              {hasFreightItem ? 'Modify Freight Shipping' : 'Add Freight Shipping (Required)'}
+            </s-link>
+          </s-stack>
         </s-banner>
       )}
-
-      {/* Button in checkout that opens the modal */}
-      <s-button command="--show" commandFor="freight-modal" variant="primary">
-        {hasFreightItem ? 'Modify Freight Shipping' : 'Add Freight Shipping (Required)'}
-      </s-button>
 
       {/* Modal content */}
       <s-modal id="freight-modal" heading="freight shipping." ref={modalRef} size='large'>
