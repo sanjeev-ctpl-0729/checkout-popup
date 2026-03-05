@@ -319,7 +319,7 @@ function Extension() {
             onClick={handleSubmit}
             disabled={adding}
           >
-            {adding ? 'Adding...' : 'submit'}
+            {adding ? 'Adding...' : 'add to cart'}
           </s-button>
         </s-stack>
       </s-modal>
