@@ -233,11 +233,11 @@ function Extension() {
       {!hasFreightItem && !hasMadeFreightSelection && (
         <s-banner>
           <s-text>
-            ⚠️ Checkout Blocked: You must select a freight service option before completing checkout.
+            Your order exceeds 300lbs, which requires selecting a freight shipping option before checkout. Please choose a freight option to continue checking out.
           </s-text>
           <s-stack direction="inline" paddingBlockStart="small-400">
             <s-link href="" target="_blank" command="--show" commandFor="freight-modal">
-              {hasFreightItem ? 'Modify Freight Shipping' : 'Add Freight Shipping (Required)'}
+              {hasFreightItem ? 'Modify Freight Shipping' : 'Add freight shipping options here.'}
             </s-link>
           </s-stack>
         </s-banner>
