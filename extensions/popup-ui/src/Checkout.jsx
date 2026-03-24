@@ -231,7 +231,7 @@ function Extension() {
     <>
       {/* Warning banner when no freight selection made and no freight item in cart */}
       {!hasFreightItem && !hasMadeFreightSelection && (
-        <s-banner>
+        <s-box background='transparent' border='base' borderRadius='base' padding='base'> 
           <s-text>
             Your order exceeds 300lbs, which requires selecting a freight shipping option before checkout. Please choose a freight option to continue checking out.
           </s-text>
@@ -240,12 +240,12 @@ function Extension() {
               {hasFreightItem ? 'Modify Freight Shipping' : 'Add freight shipping options here.'}
             </s-link>
           </s-stack>
-        </s-banner>
+        </s-box>
       )}
 
       {/* Success banner when freight item is added or when 'none' is selected */}
       {(hasFreightItem || hasSelectedNone) && (
-        <s-banner>
+        <s-box background='transparent' border='base' borderRadius='base' padding='base'> 
           <s-text>
             ✅ {hasFreightItem ? 'Freight service added. You may now complete your order.' : 'Freight service declined. You may now complete your order.'}
           </s-text>
@@ -254,7 +254,7 @@ function Extension() {
               {hasFreightItem ? 'Modify Freight Shipping' : 'Add Freight Shipping (Required)'}
             </s-link>
           </s-stack>
-        </s-banner>
+        </s-box>
       )}
 
       {/* Modal content */}
