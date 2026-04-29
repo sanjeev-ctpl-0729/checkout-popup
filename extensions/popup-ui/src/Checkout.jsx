@@ -33,7 +33,7 @@ function Extension() {
   ];
   
   // Initialize with empty array for multi-select
-  const [selectedMerchandiseIds, setSelectedMerchandiseIds] = useState([]);
+  const [selectedMerchandiseIds, setSelectedMerchandiseIds] = useState(/** @type {string[]} */ ([]));
 
   // Subscribe to cart changes to get total weight
   useEffect(() => {
@@ -291,10 +291,19 @@ function Extension() {
           <s-choice-list
             name="freightServices"
             multiple
+            values={selectedMerchandiseIds}
             onChange={(e) => {
-              // e.currentTarget.values is an array containing all selected values
               const selectedValues = e.currentTarget.values || [];
-              setSelectedMerchandiseIds(selectedValues);
+              const justSelectedNone = selectedValues.includes('none') && !selectedMerchandiseIds.includes('none');
+              const justSelectedOther = selectedValues.some(v => v !== 'none') && selectedMerchandiseIds.includes('none');
+
+              if (justSelectedNone) {
+                setSelectedMerchandiseIds(['none']);
+              } else if (justSelectedOther) {
+                setSelectedMerchandiseIds(selectedValues.filter(v => v !== 'none'));
+              } else {
+                setSelectedMerchandiseIds(selectedValues);
+              }
             }}
           >
             <s-choice value={`gid://shopify/ProductVariant/${freightServiceFirst}`}>{freightServiceFirstTitle}</s-choice>
